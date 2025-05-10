@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+python # --- Veuillez remplir vos configurations --- # ... project et location sont lus depuis .env ... CORPUS_DISPLAY_NAME = "Nom_De_Votre_Corpus" # Changez selon vos besoins CORPUS_DESCRIPTION = "Description de votre corpus" # Changez selon vos besoins PDF_URL = "https://chemin/vers/votre/document.pdf" # URL vers VOTRE document PDF PDF_FILENAME = "votre_document.pdf" # Nom pour le fichier dans le corpus # --- Début du script ---# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
