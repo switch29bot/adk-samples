@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080">
+<title>Une tâche, quatre gestes</title>
+<style>
+@font-face{font-family:"PF";src:url("fonts/PlayfairDisplay.ttf") format("truetype");font-weight:400 900;font-style:normal}
+@font-face{font-family:"PF";src:url("fonts/PlayfairDisplay-Italic.ttf") format("truetype");font-weight:400 900;font-style:italic}
+
+:root{
+  --bg:#F5F8FF; --halo:#DDE9FF; --ink:#0B1220;
+  --deep:#2F4B95; --mid:#3B6FE0; --logo:#3A6AD6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg)}
+#stage{position:relative;width:1080px;height:1350px;overflow:hidden;background:var(--bg);
+  font-family:"PF",Georgia,serif;font-kerning:normal;-webkit-font-smoothing:antialiased}
+.layer{position:absolute;left:0;top:0;width:1080px;height:1350px}
+
+/* Halo bleu : s’intensifie vers la fin (piloté en JS) */
+#halo{position:absolute;left:-140px;top:-120px;width:1360px;height:1590px;transform-origin:50% 47%;
+  background:radial-gradient(ellipse 50% 44% at 50% 47%,rgba(221,233,255,1) 0%,rgba(221,233,255,.82) 34%,rgba(221,233,255,.32) 66%,rgba(221,233,255,0) 100%)}
+
+/* Textes */
+.t{position:absolute;left:0;top:0;white-space:nowrap;line-height:1.25}
+.l1{color:var(--ink);font-weight:600;letter-spacing:-.012em}
+.l2{font-style:italic;font-weight:500;letter-spacing:-.004em;
+  background:linear-gradient(90deg,var(--deep) 0%,var(--mid) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  padding:0 .16em 0 .04em}
+.ap-i{margin-left:.075em}
+
+/* Plan 1 */
+.brand{position:absolute;left:0;top:0;white-space:nowrap;line-height:1.25;font-size:204px;font-weight:600;letter-spacing:-.018em}
+.brand .main{position:relative;color:var(--ink)}
+.brand .gh{position:absolute;left:0;top:0;mix-blend-mode:multiply}
+.brand .g1{color:var(--mid)}
+.brand .g2{color:var(--deep)}
+
+/* Étiquettes d’usages : de simples mots en serif, sans fond ni contour */
+.lab{position:absolute;left:0;top:0;white-space:nowrap;line-height:1.2;transform-origin:50% 50%}
+
+/* L’étiquette suivie : taille et couleur fixes dans tous les plans */
+#hero{position:absolute;left:0;top:0;white-space:nowrap;line-height:1.2;font-size:64px;font-weight:600;
+  color:#2F4B95;letter-spacing:-.004em}
+
+/* Verre bleu translucide */
+.fr{position:absolute;left:0;top:0;width:1080px;height:1350px}
+.glow{position:absolute;border-radius:50%;filter:blur(18px)}
+.glass{position:absolute;border-radius:34px;padding:20px;
+  background:
+    linear-gradient(118deg,rgba(255,255,255,.66) 0%,rgba(255,255,255,.16) 30%,rgba(255,255,255,0) 50%),
+    linear-gradient(160deg,rgba(246,249,255,.58) 0%,rgba(222,234,255,.44) 50%,rgba(192,212,255,.40) 100%);
+  border:1.5px solid rgba(255,255,255,.86);
+  box-shadow:0 70px 110px -60px rgba(31,58,138,.46),0 26px 54px -30px rgba(31,58,138,.30),
+    inset 0 1.5px 0 rgba(255,255,255,1),inset 1.5px 0 0 rgba(255,255,255,.55),
+    inset 0 -1.5px 0 rgba(59,111,224,.24),inset -1.5px 0 0 rgba(59,111,224,.14),
+    inset 0 -60px 90px -70px rgba(59,111,224,.34);
+  -webkit-backdrop-filter:blur(28px) saturate(170%);backdrop-filter:blur(28px) saturate(170%)}
+.glass .inner{position:relative;width:100%;height:100%;border-radius:18px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(47,75,149,.10),0 10px 30px -18px rgba(31,58,138,.35)}
+.glass .inner img{display:block;width:100%;height:100%;object-fit:cover}
+.glass .ph{display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,rgba(240,245,255,.9),rgba(222,233,255,.7));
+  color:#566C9F;font-size:50px;font-weight:500;letter-spacing:.02em;line-height:1.2;text-align:center}
+.glass.schema{padding:0}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="halo"></div>
+
+  <!-- Plan 1 -->
+  <div id="p1" class="layer"></div>
+  <!-- Plan 2 -->
+  <div id="p2" class="layer"></div>
+  <!-- Plans 4 à 7 : cadres en verre -->
+  <div id="frames" class="layer"></div>
+  <!-- Symbole (plan 3, zooms, carton final) -->
+  <svg id="sym" class="layer" viewBox="0 0 1080 1350" width="1080" height="1350">
+    <defs>
+      <!-- Le nœud visé s’allume : disque de lumière à bord doux (pas de contour seul) -->
+      <radialGradient id="nodeFill" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#FFFFFF"/>
+        <stop offset="58%" stop-color="#EAF1FF"/>
+        <stop offset="86%" stop-color="#CFE0FF"/>
+        <stop offset="100%" stop-color="#C4D8FF" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="duo" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values=".2126 .7152 .0722 0 0  .2126 .7152 .0722 0 0  .2126 .7152 .0722 0 0  0 0 0 1 0"/>
+        <feComponentTransfer>
+          <feFuncR type="table" tableValues="0.043 0.231 0.902"/>
+          <feFuncG type="table" tableValues="0.086 0.435 0.933"/>
+          <feFuncB type="table" tableValues="0.212 0.878 1"/>
+        </feComponentTransfer>
+      </filter>
+    </defs>
+    <!-- Le symbole est construit une fois (#symContent) puis instancié N fois :
+         pendant les zooms, les instances échantillonnent la caméra dans l’intervalle
+         d’obturation et s’additionnent (plus-lighter) : vrai flou de mouvement. -->
+    <defs><g id="symContent"></g></defs>
+    <g id="camWrap" style="isolation:isolate"></g>
+  </svg>
+  <!-- Plan 6 : schéma (avatars) -->
+  <svg id="deploy" class="layer" viewBox="0 0 1080 1350" width="1080" height="1350"></svg>
+  <!-- Titres -->
+  <div id="titles" class="layer"></div>
+  <!-- L’étiquette suivie -->
+  <div id="hero">Appel d’offres</div>
+</div>
+
+<script>
+/* ==========================================================================
+   « Une tâche, quatre gestes » — L’agence Switch
+   1080 × 1350 · 30 i/s · 27 s. Rendu image par image : window.seek(t).
+   ========================================================================== */
+const W = 1080, H = 1350, FPS = 30, DUR = 27;
+const ASSETS = Object.assign({ switchscope: null, livret: null, photo: null }, window.ASSETS || {});
+
+/* ---------- Outils ---------- */
+const $ = s => document.querySelector(s);
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, p) => a + (b - a) * p;
+const P = (t, t0, d) => clamp((t - t0) / d);
+const E = {
+  outCubic: p => 1 - Math.pow(1 - p, 3),
+  inCubic: p => p * p * p,
+  inQuad: p => p * p,
+  inOutCubic: p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2,
+  outQuart: p => 1 - Math.pow(1 - p, 4),
+  outBack: p => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); },
+};
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const SVGNS = 'http://www.w3.org/2000/svg';
+function sv(tag, attrs, parent) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function el(tag, cls, html, parent) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; if (parent) parent.appendChild(e); return e; }
+/* Apostrophe typographique ; espace supplémentaire avant un « i » (pas de faux tréma). */
+function typo(s) { return s.replace(/'/g, '’').replace(/’([iIîïÎÏ])/g, '’<span class="ap-i">$1</span>'); }
+function vis(e, on) { e.style.visibility = on ? '' : 'hidden'; }   // '' : hérite du parent
+
+/* ---------- Calendrier (secondes) ---------- */
+const TL = {
+  p2: 2.5, p3: 5.0, fin: 22.0,
+  zooms: [ { t: 8.0, node: 'tl' }, { t: 11.5, node: 'tr' }, { t: 15.0, node: 'r' }, { t: 18.5, node: 'bl' } ],
+  zoomDur: .42,
+  enter: .35,          // durée d’entrée de tout texte (≤ 0,4 s)
+};
+const G0 = TL.zooms.map(z => z.t + TL.zoomDur);   // début du contenu de chaque geste
+
+/* ---------- Symbole du logo (vectorisé depuis le logo officiel, unités source) ---------- */
+const SYM = {
+  C: [174.88, 188.99], R: 86.88, sw: 6.88,
+  head: [175.78, 157.14, 21.98],
+  body: 'M131.83 264.45C131.83 215.77 156.24 195.85 177.8 195.85C199.9 195.85 219.4 222.87 219.4 263.6',
+  nodes: { tl: [92.69, 61.98, 26.42], tr: [282.35, 81.33, 26.53], r: [307.34, 249.75, 26.38], bl: [105.70, 315.23, 25.62],
+           tls: [157.11, 46.95, 12.09], trs: [317.84, 156.88, 12.10], l: [51.97, 235.83, 17.60], b: [203.19, 323.97, 17.43] },
+  links: { tl: [[127.93, 115.88], [106.89, 84.26]], tr: [[236.13, 127.37], [263.34, 99.83]], r: [[254.03, 224.81], [283.47, 238.52]],
+           bl: [[133.28, 265.27], [117.88, 292.69]], tls: [[118.37, 55.76], [145.39, 49.95]], trs: [[293.02, 105.62], [312.51, 146.02]],
+           l: [[93.75, 220.09], [68.47, 229.74]], b: [[193.07, 273.95], [199.88, 306.86]] },
+  big: ['tl', 'tr', 'r', 'bl'],      // les quatre gestes
+  small: ['tls', 'trs', 'l', 'b'],   // complétés au carton final
+};
+const BASE = { pos: [540, 760], S: 1.95 };                       // plan 3 et zooms
+const FINAL = { pos: [540, 420], S: .8, focus: [599.5, 188] };   // logotype complet
+const HUMAN_SCREEN = [BASE.pos[0] + (175.8 - SYM.C[0]) * BASE.S, BASE.pos[1] + (205 - SYM.C[1]) * BASE.S];
+const ZK = 26;
+function camStr(p, S, f) { return `translate(${p[0]} ${p[1]}) scale(${S}) translate(${-f[0]} ${-f[1]})`; }
+function zoomCam(key, u) {
+  const n = SYM.nodes[key];
+  const n0 = [BASE.pos[0] + (n[0] - SYM.C[0]) * BASE.S, BASE.pos[1] + (n[1] - SYM.C[1]) * BASE.S];
+  const e = E.inOutCubic(u);
+  return camStr([lerp(n0[0], 540, e), lerp(n0[1], 675, e)], BASE.S * Math.pow(ZK, E.inQuad(u)), n);
+}
+function aroundStr(c, s) { return `translate(${c[0]} ${c[1]}) scale(${s}) translate(${-c[0]} ${-c[1]})`; }
+
+const symEls = {};
+const MB = 20, SHUTTER = .5 / FPS;   // flou de mouvement : 20 échantillons, obturateur 180°
+const mbCopies = [];
+function buildSymbol() {
+  const cam = $('#symContent');
+  for (let i = 0; i < MB; i++) {
+    const g = sv('g', {}, $('#camWrap'));
+    sv('use', { href: '#symContent' }, g);
+    mbCopies.push(g);
+  }
+  const st = { stroke: 'var(--logo)', 'stroke-width': SYM.sw, fill: 'none' };
+  symEls.wordmark = sv('image', { href: 'assets/logo-switch-wordmark.png', x: 380, y: 40, width: 810, height: 295 }, cam);
+  symEls.links = {};
+  for (const k in SYM.links) { const [a, b] = SYM.links[k]; symEls.links[k] = sv('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], pathLength: 1, ...st }, cam); }
+  symEls.ring = sv('circle', { cx: SYM.C[0], cy: SYM.C[1], r: SYM.R, ...st }, cam);
+  symEls.nodes = {};
+  for (const k in SYM.nodes) {
+    const [x, y, r] = SYM.nodes[k];
+    const g = sv('g', {}, cam);
+    const fill = sv('circle', { cx: x, cy: y, r: r + SYM.sw, fill: 'url(#nodeFill)', opacity: 0 }, g);
+    const ring = sv('circle', { cx: x, cy: y, r, ...st }, g);
+    symEls.nodes[k] = { g, fill, ring };
+  }
+  symEls.human = sv('g', {}, cam);
+  sv('circle', { cx: SYM.head[0], cy: SYM.head[1], r: SYM.head[2], ...st }, symEls.human);
+  sv('path', { d: SYM.body, ...st, 'stroke-linecap': 'butt' }, symEls.human);
+}
+function setLink(k, p, op = 1) { const l = symEls.links[k]; l.style.display = p <= 0 || op <= 0 ? 'none' : ''; l.setAttribute('stroke-dasharray', `${p} 2`); l.setAttribute('opacity', op); }
+function setNode(k, s, fill = 0, ring = 1) {
+  const n = symEls.nodes[k], c = SYM.nodes[k];
+  n.g.style.display = s <= 0 ? 'none' : '';
+  n.g.setAttribute('transform', aroundStr(c, Math.max(s, .0001)));
+  n.fill.setAttribute('opacity', fill); n.ring.setAttribute('opacity', ring);
+}
+
+/* ---------- Construction ---------- */
+const P1 = [];   // mots du plan 1
+let p1c, labels = [], msg = [], t3 = [], gest = [], fin = [], frames = [], deploy = {};
+const hero = $('#hero');
+let heroW = 0, heroH = 0;
+const HERO = {};   // positions (centre) de l’étiquette
+
+function mkText(parent, cls, txt, size, extra = {}) {
+  const e = el('div', 't ' + cls, typo(txt), parent);
+  e.style.fontSize = size + 'px';
+  Object.assign(e.style, extra);
+  return e;
+}
+function placeText(e, x, y, anchor = 'left') {
+  const w = e.offsetWidth;
+  e._x = anchor === 'center' ? Math.round(x - w / 2) : anchor === 'right' ? Math.round(x - w) : x;
+  e._y = y;
+  e.style.left = e._x + 'px'; e.style.top = y + 'px';
+}
+function enter(e, t, t0, o = {}) {
+  const d = o.d ?? TL.enter, dy = o.dy ?? 28, blur = o.blur ?? 8;
+  const p = P(t, t0, d), k = E.outCubic(p);
+  e.style.opacity = p <= 0 ? 0 : Math.min(1, k * 1.2);
+  e.style.transform = p >= 1 ? 'none' : `translate3d(0,${(1 - k) * dy}px,0)`;
+  e.style.filter = p <= 0 || p >= 1 ? 'none' : `blur(${(1 - k) * blur}px)`;
+}
+
+function buildPlan1() {
+  const root = $('#p1');
+  const words = ['ChatGPT.', 'Copilot.', 'Mistral.'];
+  const tops = [210, 420, 630];
+  words.forEach((w, i) => {
+    const b = el('div', 'brand', '', root);
+    const g2 = el('span', 'gh g2', w, b), g1 = el('span', 'gh g1', w, b), m = el('span', 'main', w, b);
+    b.style.left = Math.round((W - b.offsetWidth) / 2) + 'px'; b.style.top = tops[i] + 'px';
+    P1.push({ b, g1, g2, m, cx: W / 2, cy: tops[i] + 204 * .64 });
+  });
+  p1c = mkText(root, 'l2', 'Chacun le sien.', 104); placeText(p1c, W / 2, 903, 'center');
+  // Calendrier des dédoublements (déterministe)
+  const r = rng(7);
+  P1.forEach((w, i) => {
+    w.sched = [0, 1].map(j => {
+      const ev = []; let f = 3 + Math.floor(r() * 3) + i;
+      while (f < 2.5 * FPS + 8) {
+        const A = 9 + 18 * (f / (2.5 * FPS));
+        const roll = r();
+        ev.push({ f, dx: (r() * 2 - 1) * A, dy: (r() * 2 - 1) * A * .16, on: roll > .2, slice: roll > .72 ? [r() * 55, r() * 40] : null });
+        f += 2 + Math.floor(r() * 3);
+      }
+      return ev;
+    });
+  });
+}
+
+const LABELS = ['E-mails', 'Comptes rendus', 'Synthèses', 'Code', 'Prompts', 'Tableaux', 'Veille', 'Traductions', 'Analyses',
+  'Présentations', 'Devis', 'Contrats', 'Relances', 'Rapports', 'Notes', 'Fiches produit', 'Réponses clients', 'Procédures',
+  'Courriers', 'Briefs', 'Recrutement', 'Plannings', 'Résumés', 'FAQ', 'Formulaires', 'Benchmarks', 'Offres d’emploi', 'Bilans', 'Newsletters'];
+const LAB_STYLES = [
+  { c: '#0B1220', o: .82, w: 500, i: false },
+  { c: '#3B6FE0', o: 1, w: 500, i: true },
+  { c: '#556A9E', o: 1, w: 500, i: false },
+  { c: '#6C7FB1', o: 1, w: 400, i: true },
+  { c: '#465A8C', o: 1, w: 400, i: false },
+  { c: '#3B6FE0', o: .9, w: 400, i: false },
+];
+
+function rectPoly(cx, cy, w, h, a) {
+  const c = Math.cos(a), s = Math.sin(a), hw = w / 2, hh = h / 2;
+  return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(([x, y]) => [cx + x * c - y * s, cy + x * s + y * c]);
+}
+function polyOverlap(A, B) {
+  for (const poly of [A, B]) for (let i = 0; i < 4; i++) {
+    const p = poly[i], q = poly[(i + 1) % 4], nx = q[1] - p[1], ny = p[0] - q[0];
+    let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9;
+    for (const v of A) { const d = v[0] * nx + v[1] * ny; a0 = Math.min(a0, d); a1 = Math.max(a1, d); }
+    for (const v of B) { const d = v[0] * nx + v[1] * ny; b0 = Math.min(b0, d); b1 = Math.max(b1, d); }
+    if (a1 < b0 || b1 < a0) return false;
+  }
+  return true;
+}
+
+function buildPlan2() {
+  const root = $('#p2');
+  msg = [mkText(root, 'l1', 'Personne ne mesure', 98), mkText(root, 'l2', 'ce qui marche.', 98)];
+  placeText(msg[0], W / 2, 548, 'center'); placeText(msg[1], W / 2, 664, 'center');
+  const zones = [
+    rectPoly(W / 2, 548 + 122, 1040, 300, 0),                     // bande du message
+    rectPoly(HERO.p2[0], HERO.p2[1], heroW + 70, heroH + 40, 0),   // étiquette suivie
+  ];
+  const r = rng(2024), placed = [];
+  const items = LABELS.map((txt, i) => {
+    const st = LAB_STYLES[Math.floor(r() * LAB_STYLES.length)];
+    const size = r() < .22 ? 62 + Math.round(r() * 10) : 47 + Math.round(r() * 9);
+    const e = el('div', 'lab', typo(txt), root);
+    Object.assign(e.style, { color: st.c, opacity: st.o, fontWeight: st.w, fontStyle: st.i ? 'italic' : 'normal', fontSize: size + 'px' });
+    return { e, txt, st, size, rot: 0 };
+  }).sort((a, b) => b.e.offsetWidth * b.size - a.e.offsetWidth * a.size);
+  const M = 30;
+  for (const it of items) {
+    let ok = null;
+    for (let shrink = 0; shrink < 4 && !ok; shrink++) {
+      if (shrink) { it.size = Math.max(47, it.size - 4); it.e.style.fontSize = it.size + 'px'; }
+      const w = it.e.offsetWidth, h = it.e.offsetHeight * .78;
+      const cands = [];
+      for (let k = 0; k < 2500 && cands.length < 8; k++) {
+        const a = (r() * 2 - 1) * (r() < .5 ? 13 : 6) * Math.PI / 180;
+        const cx = M + w / 2 + r() * (W - 2 * M - w), cy = M + h / 2 + 10 + r() * (H - 2 * M - h - 20);
+        const poly = rectPoly(cx, cy, w + 16, h + 12, a);
+        if (poly.some(([x, y]) => x < 18 || x > W - 18 || y < 22 || y > H - 22)) continue;
+        if (zones.some(z => polyOverlap(z, poly))) continue;
+        if (placed.some(p => polyOverlap(p.poly, poly))) continue;
+        let dmin = 1e9; for (const p of placed) dmin = Math.min(dmin, Math.hypot(p.cx - cx, p.cy - cy));
+        cands.push({ cx, cy, a, poly, dmin });
+      }
+      if (cands.length) ok = cands.sort((x, y) => y.dmin - x.dmin)[0];
+    }
+    if (!ok) { console.warn('étiquette non placée', it.txt); it.e.remove(); continue; }
+    Object.assign(it, { cx: ok.cx, cy: ok.cy, rot: ok.a * 180 / Math.PI, poly: ok.poly, w: it.e.offsetWidth, h: it.e.offsetHeight });
+    placed.push(it);
+  }
+  // Origine de l’éclatement : l’un des trois mots du plan 1
+  placed.forEach((it, i) => {
+    const src = P1[Math.floor(r() * 3)];
+    it.ox = src.cx + (r() * 2 - 1) * 260; it.oy = src.cy + (r() * 2 - 1) * 40;
+    it.delay = r() * .04;
+    it.sDelay = r() * .12; it.sRot = (r() * 2 - 1) * 40;
+  });
+  labels = placed;
+  window.__labelCount = placed.length + 1;
+}
+
+function glassFrame(x, y, w, h, kind, src) {
+  const wrap = el('div', 'fr', '', $('#frames'));
+  wrap.style.transformOrigin = `${x + w / 2}px ${y + h / 2}px`;
+  // Lumières bleues diffuses derrière le verre (vues à travers le flou)
+  const g1 = el('div', 'glow', '', wrap), g2 = el('div', 'glow', '', wrap);
+  Object.assign(g1.style, { left: x + w * .52 + 'px', top: y + h * .5 + 'px', width: w * .62 + 'px', height: h * .62 + 'px',
+    background: 'radial-gradient(closest-side,rgba(59,111,224,.34),rgba(59,111,224,.12) 60%,rgba(59,111,224,0))' });
+  Object.assign(g2.style, { left: x - w * .1 + 'px', top: y - h * .08 + 'px', width: w * .5 + 'px', height: h * .45 + 'px',
+    background: 'radial-gradient(closest-side,rgba(157,187,255,.42),rgba(157,187,255,0))' });
+  const g = el('div', 'glass', '', wrap);
+  wrap.glass = g;
+  Object.assign(g.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+  if (kind === 'schema') { g.classList.add('schema'); return wrap; }
+  const inner = el('div', 'inner', '', g);
+  if (src) {
+    const img = el('img', '', null, inner); img.src = src;
+    if (kind === 'photo') { img.style.filter = 'url(#duo)'; img.style.objectPosition = '50% 30%'; }
+    else img.style.objectPosition = '50% 0%';
+  } else {
+    inner.classList.add('ph'); inner.innerHTML = w < 700 ? '[VISUEL<br>À FOURNIR]' : '[VISUEL À FOURNIR]';
+  }
+  return wrap;
+}
+
+function buildTitles() {
+  const T = $('#titles');
+  // Plan 3
+  t3 = [mkText(T, 'l1', 'L’agence Switch', 104), mkText(T, 'l2', 'commence par', 88), mkText(T, 'l2', 'votre métier.', 88)];
+  placeText(t3[0], W / 2, 78, 'center'); placeText(t3[1], W / 2, 206, 'center'); placeText(t3[2], W / 2, 308, 'center');
+  // Gestes
+  const X = 88;
+  const g = (a, b, c) => { const arr = [mkText(T, 'l1', a, 150)]; arr.push(mkText(T, 'l2', b, 88)); if (c) arr.push(mkText(T, 'l2', c, 88)); return arr; };
+  gest = [
+    g('Cadrer.', 'Savoir ce qui marche.'),
+    g('Former.', 'Sur votre métier,', 'pas l’outil.'),
+    g('Déployer.', 'Du pilote', 'à la production.'),
+    g('Renforcer.', 'La bonne compétence,', 'au bon moment.'),
+  ];
+  gest.forEach(arr => { placeText(arr[0], X - 4, 70); arr.slice(1).forEach((e, i) => placeText(e, X, 250 + i * 104)); });
+  // Carton final
+  fin = [mkText(T, 'l1', 'L’IA, du potentiel', 96), mkText(T, 'l2', 'au ROI mesurable.', 96), mkText(T, 'l1', 'agenceswitch.ai', 88)];
+  placeText(fin[0], W / 2, 676, 'center'); placeText(fin[1], W / 2, 788, 'center'); placeText(fin[2], W / 2, 1030, 'center');
+  fin[2].style.color = '#2F4B95'; fin[2].style.letterSpacing = '-.006em';
+}
+
+function buildFrames() {
+  frames = [
+    glassFrame(272, 448, 720, 700, 'doc', ASSETS.switchscope),
+    glassFrame(110, 500, 680, 680, 'doc', ASSETS.livret),
+    glassFrame(88, 512, 904, 638, 'schema'),
+    glassFrame(88, 512, 540, 690, 'photo', ASSETS.photo),
+  ];
+}
+
+/* Plan 6 : une étiquette + un avatar → une rangée d’avatars */
+function buildDeploy() {
+  const svg = $('#deploy');
+  const N = 7, gap = 122, y = 728, s = 1.0;
+  deploy.xs = Array.from({ length: N }, (_, i) => W / 2 + (i - 3) * gap);
+  deploy.y = y; deploy.s = s;
+  deploy.lines = []; deploy.av = [];
+  for (let i = 0; i < N; i++) deploy.lines.push(sv('line', { stroke: '#3A6AD6', 'stroke-width': 3, 'stroke-linecap': 'round', opacity: .55 }, svg));
+  for (let i = 0; i < N; i++) {
+    const g = sv('g', {}, svg);
+    sv('circle', { cx: SYM.head[0], cy: SYM.head[1], r: SYM.head[2], stroke: '#3A6AD6', 'stroke-width': SYM.sw, fill: 'none' }, g);
+    sv('path', { d: SYM.body, stroke: '#3A6AD6', 'stroke-width': SYM.sw, fill: 'none' }, g);
+    deploy.av.push(g);
+  }
+}
+
+/* ---------- Positions de l’étiquette suivie ---------- */
+function buildHero() {
+  heroW = hero.offsetWidth; heroH = hero.offsetHeight;
+  HERO.p2 = [540, 1176];
+  HERO.p4 = [300, 448 + 700];
+  HERO.p5 = [842, 500 + 680];
+  HERO.p6 = [540, 512 + 638];
+  HERO.p7 = [88 + 540 - 16 + heroW / 2, 857];   // contre la photo, sans la masquer
+  HERO.origin = [540, 420 + 204 * .64];
+}
+function heroPos(t) {
+  // [début, depuis, vers]
+  const moves = [[G0[0] + .1, 'p2', 'p4'], [G0[1] + .1, 'p4', 'p5'], [G0[2] + .1, 'p5', 'p6'], [G0[3] + .1, 'p6', 'p7']];
+  let pos = HERO.p2;
+  for (const [t0, a, b] of moves) {
+    if (t < t0) break;
+    const p = E.inOutCubic(P(t, t0, .38));
+    const A = HERO[a], B = HERO[b];
+    pos = [lerp(A[0], B[0], p), lerp(A[1], B[1], p) - Math.sin(Math.PI * p) * 70];
+  }
+  return pos;
+}
+
+/* ---------- Rendu d’une image ---------- */
+function seek(t) {
+  /* Halo : s’intensifie vers la fin, immobile à partir de 24 s */
+  const hk = t < TL.fin ? lerp(.5, .72, t / TL.fin) : lerp(.72, 1, E.inOutCubic(P(t, TL.fin, 2.0)));
+  const hs = t < TL.fin ? 1 : lerp(1, 1.1, E.inOutCubic(P(t, TL.fin, 2.0)));
+  $('#halo').style.opacity = hk; $('#halo').style.transform = `scale(${hs})`;
+
+  /* Plan 1 — 0 à 2,5 s (+ éclatement) */
+  const inP1 = t < TL.p2 + .25;
+  vis($('#p1'), inP1);
+  if (inP1) {
+    const f = Math.round(t * FPS);
+    const burst = P(t, TL.p2, .22), bk = E.outCubic(burst);
+    P1.forEach((w, i) => {
+      [w.g1, w.g2].forEach((g, j) => {
+        let ev = { dx: j ? -13 : 18, dy: j ? 2 : -2, on: true, slice: null };   // image 0 : déjà dédoublé
+        for (const e of w.sched[j]) { if (e.f <= f) ev = e; else break; }
+        const amp = 1 + bk * 5;
+        g.style.transform = `translate(${ev.dx * amp}px,${ev.dy * amp}px)`;
+        g.style.opacity = (ev.on ? (j ? .26 : .42) : 0) * (1 - bk);
+        g.style.clipPath = ev.slice ? `inset(${ev.slice[0]}% 0 ${ev.slice[1]}% 0)` : 'none';
+      });
+      w.b.style.opacity = 1 - bk;
+      w.b.style.transform = burst > 0 ? `scale(${1 + .18 * bk})` : 'none';
+      w.b.style.filter = burst > 0 ? `blur(${10 * bk}px)` : 'none';
+    });
+    vis(p1c, t < TL.p2); enter(p1c, t, .55);
+  }
+
+  /* Plan 2 — étiquettes : éclatement (≤ 0,4 s), immobiles, puis aspirées au plan 3 */
+  const inP2 = t >= TL.p2 && t < TL.p3 + .7;
+  vis($('#p2'), inP2);
+  if (inP2) {
+    msg.forEach((m, i) => { vis(m, t < TL.p3); enter(m, t, TL.p2 + .2 + i * .13); });
+    for (const it of labels) {
+      const pin = E.outQuart(P(t, TL.p2 + it.delay, .36));
+      const suck = E.inCubic(P(t, TL.p3 + it.sDelay, .42));
+      let x = lerp(it.ox, it.cx, pin), y = lerp(it.oy, it.cy, pin), s = lerp(.35, 1, pin), rot = lerp(0, it.rot, pin);
+      let o = clamp(pin * 2.2) * it.st.o;
+      if (suck > 0) {
+        x = lerp(it.cx, HUMAN_SCREEN[0], suck); y = lerp(it.cy, HUMAN_SCREEN[1], suck);
+        s = lerp(1, .12, suck); rot = it.rot + it.sRot * suck; o = it.st.o * (1 - clamp((suck - .55) / .45));
+      }
+      it.e.style.transform = `translate(${x - it.w / 2}px,${y - it.h / 2}px) rotate(${rot}deg) scale(${s})`;
+      it.e.style.opacity = o;
+      it.e.style.filter = (pin < 1 && pin > 0) ? `blur(${(1 - pin) * 6}px)` : suck > 0 ? `blur(${suck * 4}px)` : 'none';
+    }
+  }
+
+  /* Symbole */
+  let camOn = false, cam = null, zoomK = -1, zu = 0;
+  if (t >= TL.p3 && t < G0[0]) { camOn = true; }
+  TL.zooms.forEach((z, k) => { if (t >= z.t && t < z.t + TL.zoomDur) { camOn = true; zoomK = k; zu = (t - z.t) / TL.zoomDur; } });
+  if (t >= TL.fin) camOn = true;
+  vis($('#sym'), camOn);
+  if (camOn) {
+    const fz = t >= TL.fin;
+    if (zoomK >= 0) {
+      const key = TL.zooms[zoomK].node, du = SHUTTER / TL.zoomDur;
+      mbCopies.forEach((g, i) => {
+        g.style.display = '';
+        g.setAttribute('transform', zoomCam(key, Math.max(0, zu - du * i / (MB - 1))));
+        g.setAttribute('opacity', 1 / MB);
+        g.style.mixBlendMode = 'plus-lighter';
+      });
+    } else {
+      cam = fz ? camStr(FINAL.pos, FINAL.S, FINAL.focus) : camStr(BASE.pos, BASE.S, SYM.C);
+      mbCopies.forEach((g, i) => {
+        g.style.display = i ? 'none' : '';
+        g.setAttribute('transform', cam); g.setAttribute('opacity', 1); g.style.mixBlendMode = 'normal';
+      });
+    }
+
+    // Formation au plan 3 (puis état « quatre gestes » pendant les zooms et au début du carton final)
+    const ft = fz || zoomK >= 1 ? 99 : t;
+    const hp = E.outBack(P(ft, TL.p3 + .02, .3)) + .05 * Math.sin(Math.PI * P(ft, TL.p3 + .42, .2));
+    symEls.human.style.display = hp <= 0 ? 'none' : '';
+    symEls.human.setAttribute('transform', aroundStr([175.8, 205], Math.max(hp, .0001)));
+    symEls.human.style.opacity = clamp(P(ft, TL.p3 + .02, .16));
+    const rp = E.outCubic(P(ft, TL.p3 + .32, .28));
+    symEls.ring.style.display = rp <= 0 ? 'none' : '';
+    symEls.ring.setAttribute('transform', aroundStr(SYM.C, lerp(.82, 1, rp)));
+    symEls.ring.style.opacity = rp;
+    SYM.big.forEach((k, i) => {
+      // Nœud visé par le zoom : il s’allume, son lien et son contour s’effacent (ni loupe, ni cercle seul)
+      const tgt = zoomK >= 0 && TL.zooms[zoomK].node === k;
+      const fill = tgt ? E.outCubic(clamp(zu / .3)) : 0;
+      const ringOp = tgt ? 1 - E.inOutCubic(clamp((zu - .28) / .37)) : 1;
+      const linkOp = tgt ? 1 - E.inOutCubic(clamp((zu - .2) / .3)) : 1;
+      setLink(k, E.outCubic(P(ft, TL.p3 + .42 + i * .03, .22)), linkOp);
+      setNode(k, E.outBack(P(ft, TL.p3 + .55 + i * .04, .26)), fill, ringOp);
+    });
+    SYM.small.forEach((k, i) => {
+      setLink(k, fz ? E.outCubic(P(t, TL.fin + .04 + i * .1, .14)) : 0);
+      setNode(k, fz ? E.outBack(P(t, TL.fin + .14 + i * .1, .24)) : 0);
+    });
+    const wm = fz ? E.outCubic(P(t, TL.fin + .06, .34)) : 0;
+    symEls.wordmark.style.display = wm <= 0 ? 'none' : '';
+    symEls.wordmark.setAttribute('opacity', wm);
+    symEls.wordmark.setAttribute('transform', `translate(${(1 - wm) * 14} 0)`);
+  }
+
+  /* Titres */
+  t3.forEach((e, i) => { vis(e, t >= TL.p3 && t < TL.zooms[0].t); enter(e, t, TL.p3 + .6 + (i ? .14 + (i - 1) * .1 : 0)); });
+  gest.forEach((arr, k) => {
+    const on = t >= G0[k] && t < (k < 3 ? TL.zooms[k + 1].t : TL.fin);
+    arr.forEach((e, i) => { vis(e, on); enter(e, t, G0[k] + .04 + (i ? .14 + (i - 1) * .1 : 0)); });
+    const fr = frames[k];
+    vis(fr, on);
+    const p = E.outCubic(P(t, G0[k], .35));
+    fr.style.opacity = Math.min(1, p * 1.25);
+    fr.style.transform = p >= 1 ? 'none' : `translate3d(0,${(1 - p) * 40}px,0) scale(${lerp(.965, 1, p)})`;
+  });
+  fin.forEach((e, i) => { vis(e, t >= TL.fin); enter(e, t, TL.fin + .55 + [0, .15, .72][i]); });
+
+  /* Plan 6 : démultiplication */
+  const d6 = t >= G0[2] && t < TL.zooms[3].t;
+  vis($('#deploy'), d6);
+  if (d6) {
+    const one = E.outBack(P(t, G0[2] + .52, .3)), lineIn = E.outCubic(P(t, G0[2] + .46, .26));
+    const mult = P(t, G0[2] + 1.2, .6);
+    const [hx, hy] = heroPos(t);
+    deploy.av.forEach((g, i) => {
+      const d = Math.abs(i - 3);
+      const mk = i === 3 ? 1 : E.outCubic(clamp((mult - d * .06) / (1 - .18)));
+      const x = lerp(W / 2, deploy.xs[i], mk), s = (i === 3 ? one : (mk > 0 ? lerp(.6, 1, mk) : 0)) * deploy.s;
+      g.style.display = s <= 0 ? 'none' : '';
+      g.setAttribute('transform', `translate(${x} ${deploy.y}) scale(${Math.max(s, .0001)}) translate(-175.8 -200)`);
+      g.style.opacity = i === 3 ? clamp(one * 1.5) : clamp(mk * 1.6);
+      const ln = deploy.lines[i];
+      const y0 = hy - heroH * .6, y1 = deploy.y + (266 - 200) * deploy.s + 16;
+      const vis1 = i === 3 ? lineIn : (mk > 0 ? 1 : 0);
+      ln.style.display = vis1 <= 0 ? 'none' : '';
+      ln.setAttribute('x1', W / 2); ln.setAttribute('y1', y0);
+      ln.setAttribute('x2', lerp(W / 2, x, 1)); ln.setAttribute('y2', lerp(y0, y1, i === 3 ? lineIn : 1));
+      ln.setAttribute('opacity', (i === 3 ? .55 : .55 * clamp(mk * 2)));
+    });
+  }
+
+  /* L’étiquette « Appel d’offres » : même taille, même couleur, partout */
+  const heroOn = t >= TL.p2 && t < TL.fin;
+  vis(hero, heroOn);
+  if (heroOn) {
+    const pin = E.outQuart(P(t, TL.p2, .36));
+    let [x, y] = heroPos(t), s = 1;
+    if (pin < 1) { x = lerp(HERO.origin[0], x, pin); y = lerp(HERO.origin[1], y, pin); s = lerp(.35, 1, pin); }
+    hero.style.transform = `translate(${x - heroW / 2}px,${y - heroH / 2}px)` + (s !== 1 ? ` scale(${s})` : '');
+    hero.style.opacity = clamp(pin * 2.2);
+    const glow = E.outCubic(P(t, TL.p3 + .1, .35));
+    hero.style.textShadow = `0 0 2px rgba(245,248,255,.9),0 0 20px rgba(245,248,255,.95),0 0 34px rgba(245,248,255,.75),0 0 30px rgba(59,111,224,${.42 * glow}),0 12px 30px rgba(31,58,138,${.18 + .1 * glow})`;
+    hero.style.filter = (pin > 0 && pin < 1) ? `blur(${(1 - pin) * 6}px)` : 'none';
+  }
+}
+
+/* ---------- Initialisation ---------- */
+window.ready = (async () => {
+  await Promise.all([
+    document.fonts.load('600 100px PF'), document.fonts.load('500 100px PF'), document.fonts.load('400 100px PF'),
+    document.fonts.load('italic 500 100px PF'), document.fonts.load('italic 400 100px PF'),
+  ]);
+  await document.fonts.ready;
+  buildHero();
+  buildPlan1();
+  buildPlan2();
+  buildSymbol();
+  buildTitles();
+  buildFrames();
+  buildDeploy();
+  const imgs = [...document.images];
+  await Promise.all(imgs.map(i => i.decode().catch(() => {})));
+  await new Promise(r => { const im = new Image(); im.onload = r; im.onerror = r; im.src = 'assets/logo-switch-wordmark.png'; });
+  seek(0);
+  return true;
+})();
+window.seek = seek;
+</script>
+</body>
+</html>

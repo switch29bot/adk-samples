@@ -1,0 +1,14 @@
+{
+  "name": "switch-motion-une-tache-quatre-gestes",
+  "private": true,
+  "description": "Vidéo LinkedIn 4:5 de L’agence Switch — « Une tâche, quatre gestes » (rendu image par image).",
+  "scripts": {
+    "render": "node render.cjs",
+    "qa": "node qa.cjs",
+    "sheet": "node render.cjs --sheet",
+    "stills": "node render.cjs --stills"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}
